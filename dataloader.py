@@ -29,14 +29,22 @@ cate_to_synsetid = {v: k for k, v in synsetid_to_cate.items()}
 
 def get_train_file_name(root_dir, flag):
     all_path = []
-    for id in cate_to_synsetid[flag]:
-        sub_path = os.path.join(root_dir, id, 'train')
-        if not os.path.isdir(sub_path):
-            raise Exception("Not a valid path" + sub_path)
-        all_path.append()
-    return 
+    id = cate_to_synsetid[flag]
+    sub_path = os.path.join(root_dir, id, 'train')
+    if not os.path.isdir(sub_path):
+        raise Exception("Not a valid path" + sub_path)
+    for file in os.listdir(sub_path):
+        if not file.endswith('.npy'):
+            continue
+        all_path.append(file)
+    return all_path
 
 class dataloader():
-    def __init__(self, path):
-        data = np.load(path)
+    def __init__(self, path, flag):
+        for file in get_train_file_name(path, flag):
+            try:
+                data = np.load(file)
+            except Exception as e:
+                print(e)
+                continue
         self.all_points.append(data[np.newaxis, :])
