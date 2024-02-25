@@ -7,11 +7,11 @@ pointCloud = np.load(path)
 print(pointCloud.shape)
 
 b = pointCloud[np.newaxis, :]
-print(b.shape)
+print(b.shape[2])
 
 source = "/rawdata3/ShapeNetCore.v2.PC15k"
 flag = "airplane"
-all_path = get_train_file_name(source, flag)
 
+all_path = get_train_file_name(source, flag)
 for path in all_path:
     print(path)
