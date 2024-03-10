@@ -1,7 +1,7 @@
 import copy
 import torch
 import torch.nn as nn
-from . import diffeq_layers
+import diffeq_layers 
 
 __all__ = ["ODEnet", "ODEfunc"]
 

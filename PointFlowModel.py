@@ -14,13 +14,13 @@ def standard_normal_logprob(z):
 
 def build_model(input_dim, hidden_dims, context_dim, num_blocks, conditional):
     def build_cnf():
-        deffeq = ODEnet(hidden_dims= hidden_dims, 
+        diffeq = ODEnet(hidden_dims= hidden_dims, 
             input_shape=(input_dim,), 
             context_dim= context_dim,
             layer_type= "concatsquash",
             nonlinearity="tanh"
             )
-        odefunc = ODEfunc(deffeq = deffeq)
+        odefunc = ODEfunc(diffeq)
         cnf = CNF(odefunc= odefunc,
                     T = 0.5,
                     train_T= True,
@@ -41,13 +41,15 @@ def build_model(input_dim, hidden_dims, context_dim, num_blocks, conditional):
     return model
 
 def create_point_cnf(input_dim, zdim, num_blocks):
-    dims = tuple(512,512,512)
+    dims = tuple([512,512,512])
     model = build_model(input_dim,dims,zdim,num_blocks,True).cuda()
     return model
 
 class Encoder(nn.Module):
-    def __init__(self):
-        self.conv1 = nn.Conv1d(3,128,1)
+    def __init__(self, input_dims, zdims):
+        super(Encoder, self).__init__()
+        self.zdims = zdims
+        self.conv1 = nn.Conv1d(input_dims,128,1)
         self.conv2 = nn.Conv1d(128,128,1)
         self.conv3 = nn.Conv1d(128,256,1)
         self.conv4 = nn.Conv1d(256,512,1)
@@ -59,13 +61,13 @@ class Encoder(nn.Module):
 
         self.fc1_m = nn.Linear(512,256)
         self.fc2_m = nn.Linear(256,128)
-        self.fc3_m = nn.Linear(128,3)
+        self.fc3_m = nn.Linear(128,zdims)
         self.fc_bn1_m = nn.BatchNorm1d(256)
         self.fc_bn2_m = nn.BatchNorm1d(128)
 
         self.fc1_v = nn.Linear(512,256)
         self.fc2_v = nn.Linear(256,128)
-        self.fc3_v = nn.Linear(128,3)
+        self.fc3_v = nn.Linear(128,zdims)
         self.fc_bn1_v = nn.BatchNorm1d(256)
         self.fc_bn2_v = nn.BatchNorm1d(128)
 
@@ -75,14 +77,14 @@ class Encoder(nn.Module):
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))
         x = self.bn4(self.conv4(x))
-        x = torch.max(x, 3, keepdim = True)[0]
+        x = torch.max(x, 2, keepdim = True)[0]
         x = x.view(-1, 512)
 
         m = F.relu(self.fc_bn1_m(self.fc1_m(x)))
         m = F.relu(self.fc_bn2_m(self.fc2_m(m)))
         m = self.fc3_m(m)
         v = F.relu(self.fc_bn1_v(self.fc1_v(x)))
-        v = F.relu(self.fc_bn2_v(self.fc1_v(x)))
+        v = F.relu(self.fc_bn2_v(self.fc2_v(v)))
         v = self.fc3_v(v)
 
         return m,v
@@ -91,13 +93,13 @@ class Encoder(nn.Module):
 class PointFlowModel(nn.Module):
     def __init__(self):
         super(PointFlowModel, self).__init__()
-        self.encoder = Encoder()
         self.entropy_weight = 1
         self.recon_weight = 1
         self.prior_weight = 1
         self.input_dim = 3
         self.zdim = 128
         self.num_blocks = 1
+        self.encoder = Encoder(self.input_dim, self.zdim)
         self.point_cnf = create_point_cnf(self.input_dim, self.zdim, self.num_blocks)
         self.latent_cnf = nn.Sequential()
 
@@ -132,7 +134,7 @@ class PointFlowModel(nn.Module):
         entropy = self.gaussian_entropy(z_sigma)
 
         # P(z)
-        log_pz = torch.zeos(batch_size, 1).to(z)
+        log_pz = torch.zeros(batch_size, 1).to(z)
         z_new = z.view(*z.size())
         z_new = z_new + (log_pz * 0.).mean()
         y, delta_log_py = self.point_cnf(x, z_new, torch.zeros(batch_size, num_points, 1).to(x))
@@ -170,4 +172,4 @@ class PointFlowModel(nn.Module):
         return y,x
 
     def get_parameters(self):
-        return list(self.encoder.parameters()) + list(self.point_cnd.parameters()) + list(list(self.latent_cnf.parameters()))
+        return list(self.encoder.parameters()) + list(self.point_cnf.parameters()) + list(list(self.latent_cnf.parameters()))

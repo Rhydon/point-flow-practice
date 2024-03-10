@@ -33,24 +33,24 @@ random_seed = 38383
 sample_size = 10000
 test_size = 5000
 
-def get_train_file_name(root_dir, flag):
+def get_train_file_name(root_dir, flag, middle_folder):
     all_path = []
     id = cate_to_synsetid[flag]
-    sub_path = os.path.join(root_dir, id, 'train')
+    sub_path = os.path.join(root_dir, id, middle_folder)
     if not os.path.isdir(sub_path):
         raise Exception("Not a valid path" + sub_path)
     for file in os.listdir(sub_path):
         if not file.endswith('.npy'):
             continue
-        all_path.append(file)
+        all_path.append(os.path.join(sub_path, file))
     return all_path
 
-class dataloader(Dataset):
-    def __init__(self, path, flag):
+class Dataloader(Dataset):
+    def __init__(self, path, flag, middle_folder):
 
         self.all_points = []
 
-        all_path= get_train_file_name(path, flag)
+        all_path = get_train_file_name(path, flag, middle_folder)
         random.Random(random_seed).shuffle(all_path)
 
         for file in all_path:
