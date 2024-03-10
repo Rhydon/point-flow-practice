@@ -80,7 +80,7 @@ class dataloader(Dataset):
         target_point = self.train_points[idx]
         train_points = torch.from_numpy(target_point[idxs, :]).float()
 
-        test_points = self.train_points[idx]
+        test_points = self.test_points[idx]
         test_idx = np.arange(test_size)
         test_points = torch.from_numpy(test_points[test_idx, :]).float()
         return {
